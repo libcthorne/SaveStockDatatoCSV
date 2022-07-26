@@ -44,6 +44,7 @@ class TestApp(EClient, EWrapper):
         self.y = 0
 
 
+##This is where the code enters
 
     def nextValidId(self, orderId:int):
         print("id", orderId)
@@ -63,7 +64,7 @@ class TestApp(EClient, EWrapper):
         m.primaryExchange = exchange
 
         if i == 0:
-            
+
             directory = df1.loc[i, 'Sector']
             parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
             path = os.path.join(parent_dir, directory)
@@ -131,7 +132,7 @@ class TestApp(EClient, EWrapper):
 
 
 
-
+## The main issue is that it is just not saving the file to the CSV or incrementing "i" so that I can pull the next ticker from the CSV
     def historicalDataEnd(self, reqId:int, start:str, end:str):
         print(self.y)
         self.y = self.y + 1
@@ -190,7 +191,7 @@ def main():
     app = TestApp()
 
     app.connect("127.0.0.1", 7497, 0)
-    app.run()
+    app.run() ##this is where the code jumps to the "nextValidId" function
 
 if __name__ == "__main__":
     main()
