@@ -10,6 +10,9 @@ import pandas as pd
 import collections
 import os
 
+TICKER_DIR = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+#TICKER_DIR = "C:\\Master_Global_Ticker_List\\"
+
 orderId=1
 reqId= 1
 tickerId = 1
@@ -19,8 +22,8 @@ tickerId = 1
 now = datetime.now()
 queryTime = now.strftime("%Y%m%d %H:%M:%S")
 
-
-df1 = pd.read_csv("D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List.csv", header=0)
+df1 = pd.read_csv(f"D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List.csv", header=0)
+#df1 = pd.read_csv("Mock_Global_Ticker_List.csv", header=0)[:3]
 
 df2 = pd.DataFrame()
 
@@ -31,6 +34,7 @@ q = 0
 i = 0
 nextTickerId = 1
 g = 0
+print("df1:")
 print(df1)
 
 
@@ -39,6 +43,7 @@ print(df1)
 
 class TestApp(EClient, EWrapper):
     def __init__(self):
+        print("TestApp.__init__")
         EClient.__init__(self, self)
         self.data = collections.defaultdict(list)
         self.y = 0
@@ -47,15 +52,17 @@ class TestApp(EClient, EWrapper):
 ##This is where the code enters
 
     def nextValidId(self, orderId:int):
-        print("id", orderId)
+        print(f"nextValidId(orderId={orderId})")
 
         global nextTickerId
+        global i  # i has to be declared as global if it's being modified
         global g
+        global directory
+        global symbol
         i = g
         symbol = df1.loc[i, 'IBKR Symbol']
         exchange = df1.loc[i, 'IBKR Exchange Symbol']
         currency = df1.loc[i, 'Currency']
-
         m = Contract()
         m.symbol = symbol
         m.secType = "STK"
@@ -68,29 +75,29 @@ class TestApp(EClient, EWrapper):
         if i == 0:
 
             directory = df1.loc[i, 'Sector']
-            parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+            parent_dir = TICKER_DIR
             path = os.path.join(parent_dir, directory)
-            os.makedirs(path)
+            os.makedirs(path, exist_ok=True)
             os.chdir(path)
 
         elif df1.loc[i, 'Sector'] == df1.loc[(i - 1), 'Sector']:
 
             directory = df1.loc[i, 'Sector']
-            parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+            parent_dir = TICKER_DIR
             path = os.path.join(parent_dir, directory)
             os.chdir(path)
 
         else:
 
             directory = df1.loc[i, 'Sector']
-            parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+            parent_dir = TICKER_DIR
             path = os.path.join(parent_dir, directory)
-            os.makedirs(path)
+            os.makedirs(path, exist_ok=True)
             os.chdir(path)
 
         filename = symbol
         path = os.path.join(path, filename)
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
         os.chdir(path)
 
         i = i + 1
@@ -109,7 +116,35 @@ class TestApp(EClient, EWrapper):
 
 
 
+    ################################################################
 
+    # Mock code
+
+    # from dataclasses import dataclass
+
+    # @dataclass
+    # class FakeBar:
+    #     date: str
+    #     open: str
+    #     high: str
+    #     low: str
+    #     close: str
+    #     volume: str
+
+    # def reqHistoricalData(self, *args):
+    #     print(f"reqHistoricalData{args}")
+    #     # Mock callbacks
+    #     self.historicalData(1, self.FakeBar(
+    #         date=f"testdate_{i}",
+    #         open=f"testopen_{i}",
+    #         high=f"testhigh_{i}",
+    #         low=f"testlow_{i}",
+    #         close=f"testclose_{i}",
+    #         volume=f"testvolume_{i}",
+    #     ))
+    #     self.historicalDataEnd(1, "", "")
+
+    ################################################################
 
 
 
@@ -120,6 +155,7 @@ class TestApp(EClient, EWrapper):
 ## This is the initial callback for the "reqHistoricalData" request
 
     def historicalData(self, reqId, bar):
+        print(f"historicalData({reqId}, {bar})")
 
         self.data['date'].append(bar.date)
         self.data['open'].append(bar.open)
@@ -128,11 +164,6 @@ class TestApp(EClient, EWrapper):
         self.data['close'].append(bar.close)
         self.data['volume'].append(bar.volume)
 
-        global df2
-        df2 = pd.DataFrame.from_dict(self.data)
-
-        print(df2)
-
 
 
 
@@ -140,11 +171,19 @@ class TestApp(EClient, EWrapper):
 ## This gets called after every completed "historicalData" callback has been completed (So 25 times per ticker)
     
     def historicalDataEnd(self, reqId:int, start:str, end:str):
+        print(f"historicalDataEnd({reqId}, {start}, {end})")
         print(self.y)
+        global df2
+        df2 = pd.DataFrame.from_dict(self.data)
+        csv_path = TICKER_DIR + str(directory) + '\\' + str(symbol) + '\\' + str(symbol) + 'TickerInfo.txt'
+        print("*" * 80)
+        print(f"Saving CSV to {csv_path}")
+        print(f"df2 contains {len(df2)} rows")
+        print("*" * 80)
+        df2.to_csv(csv_path, header=None, index=None, sep='\t')
         self.y = self.y + 1
         if self.y == 1 and i <= (len(df1) - 1):
-            global df2
-            df2.to_csv(r'D:\\UsedLists\\US_Master_Tickers\\Master_US_Ticker_List\\' + str(directory) + '\\' + str(symbol) + '\\' + str(symbol) + 'TickerInfo.txt', header=None, index=None, sep='\t')
+            print("Moving onto next ticker")
             df2 = df2.iloc[0:0]
             self.data.clear()
             global nextTickerId
@@ -201,6 +240,9 @@ def main():
 
     app.connect("127.0.0.1", 7497, 0)
     app.run() ##this is where the code jumps to the "nextValidId" function
+    # Mock callbacks
+    #app.nextValidId(3)
+    print("Exiting main")
 
 if __name__ == "__main__":
     main()
