@@ -97,7 +97,7 @@ class TestApp(EClient, EWrapper):
         x = 1
 
         self.y = 0
-        while x <= 1:#25
+        while x <= 25: #This is just the number of times I need to send the request per ticker
 
             starttime = datetime.now() - timedelta(days=(x * 50))
             queryTime = starttime.strftime("%Y%m%d %H:%M:%S")
