@@ -63,6 +63,8 @@ class TestApp(EClient, EWrapper):
         m.currency = currency
         m.primaryExchange = exchange
 
+
+        ## These if statements just make sure that I save the data into the right folders, this works fine too
         if i == 0:
 
             directory = df1.loc[i, 'Sector']
@@ -100,6 +102,7 @@ class TestApp(EClient, EWrapper):
             starttime = datetime.now() - timedelta(days=(x * 50))
             queryTime = starttime.strftime("%Y%m%d %H:%M:%S")
 
+            ##This is the request for the market data, the "nextTickerId" just needs to be a random unique number each time, and the "querytime" is the end time for the data call, in this case, going back 50 days in 5 min intervals
             self.reqHistoricalData(nextTickerId, m, queryTime, "50 D", "5 mins", "TRADES", 1, 1, False, [])  ##50 day max works
             nextTickerId = nextTickerId + 1
             x = x + 1
