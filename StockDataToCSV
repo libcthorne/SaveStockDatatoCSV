@@ -1,0 +1,188 @@
+from ibapi.client import EClient
+from ibapi.wrapper import EWrapper
+from ibapi.common import *
+from ibapi.contract import *
+from ContractSamples import ContractSamples
+import socket, time
+import datetime
+from datetime import datetime, timedelta
+import pandas as pd
+import collections
+import os
+
+
+
+orderId=1
+reqId= 1
+tickerId = 1
+
+
+
+now = datetime.now()
+queryTime = now.strftime("%Y%m%d %H:%M:%S")
+
+
+df1 = pd.read_csv("D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List.csv", header=0) ##This contains all of the ticker data
+
+df2 = pd.DataFrame()
+
+directory = ''
+symbol = ''
+y = 0
+q = 0
+
+
+print(df1)
+
+
+## This classes is required for the program
+class TestApp(EClient, EWrapper):
+    def __init__(self):
+        EClient.__init__(self, self)
+        self.data = collections.defaultdict(list)
+
+
+
+    def nextValidId(self, orderId:int):
+        print("id", orderId)
+
+        nextTickerId = 1
+
+
+        ## The Directories listed below work fine, they just take the data that I have from a CSV file with the Tickers/Sectors/Etc and organizes them
+        
+        i =0
+        while i <= (len(df1) - 1):
+
+            symbol = df1.loc[i, 'IBKR Symbol']
+            exchange = df1.loc[i, 'IBKR Exchange Symbol']
+            currency = df1.loc[i, 'Currency']
+
+            m = Contract()
+            m.symbol = symbol
+            m.secType = "STK"
+            m.exchange = exchange
+            m.currency = currency
+            m.primaryExchange = exchange
+
+            if i == 0:
+
+                directory = df1.loc[i, 'Sector']
+                parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+                path = os.path.join(parent_dir, directory)
+                os.makedirs(path)
+                os.chdir(path)
+
+            elif df1.loc[i, 'Sector'] == df1.loc[(i - 1), 'Sector']:
+
+                directory = df1.loc[i, 'Sector']
+                parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+                path = os.path.join(parent_dir, directory)
+                os.chdir(path)
+
+            else:
+
+                directory = df1.loc[i, 'Sector']
+                parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+                path = os.path.join(parent_dir, directory)
+                os.makedirs(path)
+                os.chdir(path)
+
+            filename = symbol
+            path = os.path.join(path, filename)
+            os.makedirs(path)
+            os.chdir(path)
+
+            i = i + 1
+            x = 1
+            global y
+            y = 0
+            while x <= 25: #This does a loop sending 25 requests for 50 Day increments for the same Ticker
+
+                starttime = datetime.now() - timedelta(days=(x * 50))
+                queryTime = starttime.strftime("%Y%m%d %H:%M:%S")
+
+                #The syntax of the request below is, Random Number, contract, request end time, duration of price data before end time, time increments, and the rest is not terribly meaningful
+                self.reqHistoricalData(nextTickerId, m, queryTime, "50 D", "5 mins", "TRADES", 1, 1, False, [])  ##50 day max works
+                nextTickerId = nextTickerId + 1
+                x = x + 1
+
+            while y <= 1:
+                global q
+                q = 0
+
+            global df2
+            df2 = df2.iloc[0:0]
+            self.data.clear()
+
+
+
+
+
+
+
+    ## This is the callback that recieves the stock data, this will be called 25 times per stock
+    def historicalData(self, reqId, bar): 
+
+        self.data['date'].append(bar.date)
+        self.data['open'].append(bar.open)
+        self.data['high'].append(bar.high)
+        self.data['low'].append(bar.low)
+        self.data['close'].append(bar.close)
+        self.data['volume'].append(bar.volume)
+
+        global df2
+        df2 = pd.DataFrame.from_dict(self.data)
+        print(df2)
+        df2.to_csv(r'D:\\UsedLists\\US_Master_Tickers\\Master_US_Ticker_List\\' + str(directory) + '\\' + str(symbol) + '\\' + str(symbol) + 'TickerInfo.txt', header=None, index=None, sep='\t')
+        global y
+        y = y + 1
+
+
+    ## This callback gets called after every time I send a request to the "reqHistoricalData" command 
+    def historicalDataEnd(self, reqId:int, start:str, end:str):
+        pass
+
+
+
+
+## These functions are not important or needed for the most part
+
+    def error(self, reqId:TickerId, errorCode:int, errorString:str):
+        print("Error: ", reqId, "", errorCode, "", errorString)
+
+    def contractDetails(self, reqId:int, contractDetails:ContractDetails):
+        print("contractDetail: ", reqId, " ", contractDetails)
+
+    def contractDetailsEnd(self, reqId:int):
+        print("end, disconnecting")
+        self._socketShutdown()
+        time.sleep(1)
+        self.disconnect()
+
+    def _socketShutdown(self):
+        self.conn.lock.acquire()
+        try:
+            if self.conn.socket is not None:
+                self.conn.socket.shutdown(socket.SHUT_WR)
+        finally:
+            self.conn.lock.release()
+
+
+
+
+
+
+
+
+
+
+def main():
+
+
+    app = TestApp()
+    app.connect("127.0.0.1", 7497, 0)
+    app.run() ## The code jumps to the "nextValidId" function, and continues to execute from there
+
+if __name__ == "__main__":
+    main()
