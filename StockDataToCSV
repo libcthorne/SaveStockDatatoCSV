@@ -151,9 +151,14 @@ class TestApp(EClient, EWrapper):
 
 
 
+
+
+
+
+##These functions are not important, they are not an issue
+
     def error(self, reqId:TickerId, errorCode:int, errorString:str):
         print("Error: ", reqId, "", errorCode, "", errorString)
-
 
 
     def contractDetails(self, reqId:int, contractDetails:ContractDetails):
@@ -166,8 +171,6 @@ class TestApp(EClient, EWrapper):
         self.disconnect()
 
 
-        ## added the socket shut down which mattered
-        ##added the time.sleep after adding the self._socketShutdown() above
     def _socketShutdown(self):
         self.conn.lock.acquire()
         try:
