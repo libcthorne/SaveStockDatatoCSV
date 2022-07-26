@@ -116,7 +116,8 @@ class TestApp(EClient, EWrapper):
 
 
 
-
+## This is where I save the data to a dictionary list, then to a dataframe
+## This is the initial callback for the "reqHistoricalData" request
 
     def historicalData(self, reqId, bar):
 
@@ -136,6 +137,8 @@ class TestApp(EClient, EWrapper):
 
 
 ## The main issue is that it is just not saving the file to the CSV or incrementing "i" so that I can pull the next ticker from the CSV
+## This gets called after every completed "historicalData" callback has been completed (So 25 times per ticker)
+    
     def historicalDataEnd(self, reqId:int, start:str, end:str):
         print(self.y)
         self.y = self.y + 1
