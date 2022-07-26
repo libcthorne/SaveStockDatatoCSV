@@ -10,8 +10,6 @@ import pandas as pd
 import collections
 import os
 
-
-
 orderId=1
 reqId= 1
 tickerId = 1
@@ -22,7 +20,7 @@ now = datetime.now()
 queryTime = now.strftime("%Y%m%d %H:%M:%S")
 
 
-df1 = pd.read_csv("D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List.csv", header=0) ##This contains all of the ticker data
+df1 = pd.read_csv("D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List.csv", header=0)
 
 df2 = pd.DataFrame()
 
@@ -30,90 +28,80 @@ directory = ''
 symbol = ''
 y = 0
 q = 0
-
-
+i = 0
+nextTickerId = 1
+g = 0
 print(df1)
 
 
-## This classes is required for the program
+
+
+
 class TestApp(EClient, EWrapper):
     def __init__(self):
         EClient.__init__(self, self)
         self.data = collections.defaultdict(list)
+        self.y = 0
 
 
 
     def nextValidId(self, orderId:int):
         print("id", orderId)
 
-        nextTickerId = 1
+        global nextTickerId
+        global g
+        i = g
+        symbol = df1.loc[i, 'IBKR Symbol']
+        exchange = df1.loc[i, 'IBKR Exchange Symbol']
+        currency = df1.loc[i, 'Currency']
 
+        m = Contract()
+        m.symbol = symbol
+        m.secType = "STK"
+        m.exchange = exchange
+        m.currency = currency
+        m.primaryExchange = exchange
 
-        ## The Directories listed below work fine, they just take the data that I have from a CSV file with the Tickers/Sectors/Etc and organizes them
-        
-        i =0
-        while i <= (len(df1) - 1):
-
-            symbol = df1.loc[i, 'IBKR Symbol']
-            exchange = df1.loc[i, 'IBKR Exchange Symbol']
-            currency = df1.loc[i, 'Currency']
-
-            m = Contract()
-            m.symbol = symbol
-            m.secType = "STK"
-            m.exchange = exchange
-            m.currency = currency
-            m.primaryExchange = exchange
-
-            if i == 0:
-
-                directory = df1.loc[i, 'Sector']
-                parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
-                path = os.path.join(parent_dir, directory)
-                os.makedirs(path)
-                os.chdir(path)
-
-            elif df1.loc[i, 'Sector'] == df1.loc[(i - 1), 'Sector']:
-
-                directory = df1.loc[i, 'Sector']
-                parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
-                path = os.path.join(parent_dir, directory)
-                os.chdir(path)
-
-            else:
-
-                directory = df1.loc[i, 'Sector']
-                parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
-                path = os.path.join(parent_dir, directory)
-                os.makedirs(path)
-                os.chdir(path)
-
-            filename = symbol
-            path = os.path.join(path, filename)
+        if i == 0:
+            
+            directory = df1.loc[i, 'Sector']
+            parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+            path = os.path.join(parent_dir, directory)
             os.makedirs(path)
             os.chdir(path)
 
-            i = i + 1
-            x = 1
-            global y
-            y = 0
-            while x <= 25: #This does a loop sending 25 requests for 50 Day increments for the same Ticker
+        elif df1.loc[i, 'Sector'] == df1.loc[(i - 1), 'Sector']:
 
-                starttime = datetime.now() - timedelta(days=(x * 50))
-                queryTime = starttime.strftime("%Y%m%d %H:%M:%S")
+            directory = df1.loc[i, 'Sector']
+            parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+            path = os.path.join(parent_dir, directory)
+            os.chdir(path)
 
-                #The syntax of the request below is, Random Number, contract, request end time, duration of price data before end time, time increments, and the rest is not terribly meaningful
-                self.reqHistoricalData(nextTickerId, m, queryTime, "50 D", "5 mins", "TRADES", 1, 1, False, [])  ##50 day max works
-                nextTickerId = nextTickerId + 1
-                x = x + 1
+        else:
 
-            while y <= 1:
-                global q
-                q = 0
+            directory = df1.loc[i, 'Sector']
+            parent_dir = "D:\\UsedLists\\Global_Master_Tickers\\Master_Global_Ticker_List\\"
+            path = os.path.join(parent_dir, directory)
+            os.makedirs(path)
+            os.chdir(path)
 
-            global df2
-            df2 = df2.iloc[0:0]
-            self.data.clear()
+        filename = symbol
+        path = os.path.join(path, filename)
+        os.makedirs(path)
+        os.chdir(path)
+
+        i = i + 1
+        x = 1
+
+        self.y = 0
+        while x <= 1:#25
+
+            starttime = datetime.now() - timedelta(days=(x * 50))
+            queryTime = starttime.strftime("%Y%m%d %H:%M:%S")
+
+            self.reqHistoricalData(nextTickerId, m, queryTime, "50 D", "5 mins", "TRADES", 1, 1, False, [])  ##50 day max works
+            nextTickerId = nextTickerId + 1
+            x = x + 1
 
 
 
@@ -121,8 +109,12 @@ class TestApp(EClient, EWrapper):
 
 
 
-    ## This is the callback that recieves the stock data, this will be called 25 times per stock
-    def historicalData(self, reqId, bar): 
+
+
+
+
+
+    def historicalData(self, reqId, bar):
 
         self.data['date'].append(bar.date)
         self.data['open'].append(bar.open)
@@ -133,23 +125,35 @@ class TestApp(EClient, EWrapper):
 
         global df2
         df2 = pd.DataFrame.from_dict(self.data)
+
         print(df2)
-        df2.to_csv(r'D:\\UsedLists\\US_Master_Tickers\\Master_US_Ticker_List\\' + str(directory) + '\\' + str(symbol) + '\\' + str(symbol) + 'TickerInfo.txt', header=None, index=None, sep='\t')
-        global y
-        y = y + 1
 
 
-    ## This callback gets called after every time I send a request to the "reqHistoricalData" command 
+
+
+
     def historicalDataEnd(self, reqId:int, start:str, end:str):
-        pass
+        print(self.y)
+        self.y = self.y + 1
+        if self.y == 1 and i <= (len(df1) - 1):
+            global df2
+            df2.to_csv(r'D:\\UsedLists\\US_Master_Tickers\\Master_US_Ticker_List\\' + str(directory) + '\\' + str(symbol) + '\\' + str(symbol) + 'TickerInfo.txt', header=None, index=None, sep='\t')
+            df2 = df2.iloc[0:0]
+            self.data.clear()
+            global nextTickerId
+            nextTickerId = 1 + nextTickerId
+            global g
+            g = g + 1
+            self.nextValidId(nextTickerId)
 
 
 
 
-## These functions are not important or needed for the most part
 
     def error(self, reqId:TickerId, errorCode:int, errorString:str):
         print("Error: ", reqId, "", errorCode, "", errorString)
+
+
 
     def contractDetails(self, reqId:int, contractDetails:ContractDetails):
         print("contractDetail: ", reqId, " ", contractDetails)
@@ -160,6 +164,9 @@ class TestApp(EClient, EWrapper):
         time.sleep(1)
         self.disconnect()
 
+
+        ## added the socket shut down which mattered
+        ##added the time.sleep after adding the self._socketShutdown() above
     def _socketShutdown(self):
         self.conn.lock.acquire()
         try:
@@ -181,8 +188,9 @@ def main():
 
 
     app = TestApp()
+
     app.connect("127.0.0.1", 7497, 0)
-    app.run() ## The code jumps to the "nextValidId" function, and continues to execute from there
+    app.run()
 
 if __name__ == "__main__":
     main()
